@@ -74,14 +74,14 @@ classdef postProcessingObject < handle
             obj.ref = ref;
             load(obj.metaLoc,'delta_frep');
             obj.dFrep = delta_frep;
-            %load(obj.metaLoc,'f_rep');
-            %obj.frep = f_rep;
+            load(obj.metaLoc,'f_rep');
+            obj.frep = f_rep;
             
             % Analysis range of data, default is all the data
-            obj.anaRange = [1;length(obj.sig(1,:))];
+            obj.anaRange = 1:length(obj.sig(1,:));
             
             % Number of data traces currently in the analysis object
-            obj.num = obj.anaRange(2);
+            obj.num = length(obj.sig(1,:));
 
             % Create a time axis for reference in the data in us
             obj.t = 1e6*(0:length(obj.sig(:,1))-1)./obj.daqFreq;
@@ -236,7 +236,7 @@ classdef postProcessingObject < handle
             % Update figure y data
             plot(fMHz,obj.sigSpec(:,index));
             title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
-            xlabel('Frequency (MHz)');
+            xlabel('Frequency (THz)');
             ylabel('Amplitude (A.U.)');
             
             plotting = true;
@@ -253,7 +253,7 @@ classdef postProcessingObject < handle
                         % Update figure y data
                         plot(fMHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (MHz)');
+                        xlabel('Frequency (THz)');
                         ylabel('Amplitude (A.U.)');
                     elseif key == 29 % Right arrow
                         index = min(index + 1, obj.numSpec);
@@ -261,7 +261,7 @@ classdef postProcessingObject < handle
                         % Update figure y data
                         plot(fMHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (MHz)');
+                        xlabel('Frequency (THz)');
                         ylabel('Amplitude (A.U.)');
                     elseif key == 27 % Escape key to exit
                         close;
@@ -321,7 +321,7 @@ classdef postProcessingObject < handle
             figure;
             plot(obj.freq,obj.absorbance)
             title('Absorbance of averaged data')
-            xlabel('Frequency (MHz)')
+            xlabel('Frequency (THz)')
             ylabel('Absorbance')
         end
         %% Apodization windowing 
@@ -330,13 +330,18 @@ classdef postProcessingObject < handle
         % ablation spike removal is applied. "len" is the rectangular
         % apodization window length, this function can be called without
         % specifying len if apoLen was specified with its mutator. Calling
-        % this function sets apoLen to the value of len in us.
+        % this function sets apoLen to the value of len in us. Note that
+        % this will not work if the apodization window is large enough to
+        % contain the ablation spike as well.
         function obj = showApoWindow(obj,len)
             
             if nargin() == 2
                 obj.apoLen = len; %In microseconds
             end
 
+            numInd = round(0.5e-6*obj.apoLen*obj.daqFreq);
+            centInd = round(length(obj.sig(:,1))/2);
+            
             % Create figure
             figure;
             
@@ -351,17 +356,15 @@ classdef postProcessingObject < handle
             ylabel('Amplitude (A.U.)');
             hold on
             % Find peaks and label them
-            [pks,locs] = findpeaks(obj.sig(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
-            text(locs+1,pks,string(locs))
-            if length(locs)>=2
-                text(0.72,0.94,append("Delta = ",string(locs(2)-locs(1))),'units','normalized')
-            end
+            [pks,locs] = findpeaks(obj.sig(centInd-numInd:centInd+numInd,index),'MinPeakProminence',obj.peakProm,'MinPeakDistance',200);
+            locs = locs+centInd-numInd-1;
+            
             % Show the apodization window
             % Find the window positions
-            xPos1 = [locs(2)-obj.apoLen;locs(2)-obj.apoLen];
-            xPos2 = [locs(2)+obj.apoLen;locs(2)+obj.apoLen];
-            yPos1 = [-pks(2),pks(2)];
-            yPos2 = [-pks(2),pks(2)];
+            xPos1 = [tus(locs(1))-obj.apoLen;tus(locs(1))-obj.apoLen];
+            xPos2 = [tus(locs(1))+obj.apoLen;tus(locs(1))+obj.apoLen];
+            yPos1 = [-pks(1),pks(1)];
+            yPos2 = [-pks(1),pks(1)];
             plot(xPos1,yPos1,'color','r')
             plot(xPos2,yPos2,'color','r')  
             hold off
@@ -373,6 +376,14 @@ classdef postProcessingObject < handle
                 if waitforbuttonpress
                     key = get(gcf, 'CurrentCharacter');
 
+                    [pks,locs] = findpeaks(obj.sig(centInd-numInd:centInd+numInd,index),'MinPeakProminence',obj.peakProm,'MinPeakDistance',200);
+                    locs = locs+centInd-numInd-1;
+                    % Find the window positions
+                    xPos1 = [tus(locs(1))-obj.apoLen;tus(locs(1))-obj.apoLen];
+                    xPos2 = [tus(locs(1))+obj.apoLen;tus(locs(1))+obj.apoLen];
+                    yPos1 = [-pks(1),pks(1)];
+                    yPos2 = [-pks(1),pks(1)];
+                    
                     % Handle key presses
                     if key == 28 % Left arrow
                         index = max(index - 1, 1);
@@ -383,18 +394,7 @@ classdef postProcessingObject < handle
                         xlabel('Time (us)');
                         ylabel('Amplitude (A.U.)');
                         hold on
-                        % Find peaks and label them
-                        [pks,locs] = findpeaks(obj.sig(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
-                        text(locs+1,pks,string(locs))
-                        if length(locs)>=2
-                            text(0.72,0.94,append("Delta = ",string(locs(2)-locs(1))),'units','normalized')
-                        end
                         % Show the apodization window
-                        % Find the window positions
-                        xPos1 = [locs(2)-obj.apoLen;locs(2)-obj.apoLen];
-                        xPos2 = [locs(2)+obj.apoLen;locs(2)+obj.apoLen];
-                        yPos1 = [-pks(2),pks(2)];
-                        yPos2 = [-pks(2),pks(2)];
                         plot(xPos1,yPos1,'color','r')
                         plot(xPos2,yPos2,'color','r')  
                         hold off
@@ -407,18 +407,7 @@ classdef postProcessingObject < handle
                         xlabel('Time (us)');
                         ylabel('Amplitude (A.U.)');
                         hold on
-                        % Find peaks and label them
-                        [pks,locs] = findpeaks(obj.sig(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
-                        text(locs+1,pks,string(locs))
-                        if length(locs)>=2
-                            text(0.72,0.94,append("Delta = ",string(locs(2)-locs(1))),'units','normalized')
-                        end
                         % Show the apodization window
-                        % Find the window positions
-                        xPos1 = [locs(2)-obj.apoLen;locs(2)-obj.apoLen];
-                        xPos2 = [locs(2)+obj.apoLen;locs(2)+obj.apoLen];
-                        yPos1 = [-pks(2),pks(2)];
-                        yPos2 = [-pks(2),pks(2)];
                         plot(xPos1,yPos1,'color','r')
                         plot(xPos2,yPos2,'color','r')  
                         hold off
@@ -540,7 +529,8 @@ classdef postProcessingObject < handle
             
             len = length(obj.sigSpec(:,1));
             freqBin = obj.daqFreq/len;
-            obj.freq = 1e-6*(-(len-1)/2:(len-1)/2)*freqBin;
+            % Create frequency axis in THz
+            obj.freq = (-(len-1)/2:(len-1)/2)*freqBin*obj.frep/obj.dFrep;
             obj.numSpec = obj.num;
         end
         
