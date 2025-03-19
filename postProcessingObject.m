@@ -44,7 +44,7 @@ classdef postProcessingObject < handle
         frep;
         dFrep;
 
-        % The frequency and time axis in us and MHz
+        % The frequency and time axis in us and Hz
         t;
         freq;
         
@@ -60,7 +60,7 @@ classdef postProcessingObject < handle
     end
     
     methods
-%% Object initiator
+%% Object constructor
         %Instantiate an object, load variables
         function obj = postProcessingObject(sigPath,refPath,metaPath)
             % Signal, Reference, and MetaData paths and loading data
@@ -529,7 +529,7 @@ classdef postProcessingObject < handle
             
             len = length(obj.sigSpec(:,1));
             freqBin = obj.daqFreq/len;
-            % Create frequency axis in THz
+            % Create frequency axis in Hz
             obj.freq = (-(len-1)/2:(len-1)/2)*freqBin*obj.frep/obj.dFrep;
             obj.numSpec = obj.num;
         end
