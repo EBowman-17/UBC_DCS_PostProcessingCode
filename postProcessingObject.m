@@ -63,28 +63,31 @@ classdef postProcessingObject < handle
 %% Object constructor
         %Instantiate an object, load variables
         function obj = postProcessingObject(sigPath,refPath,metaPath)
-            % Signal, Reference, and MetaData paths and loading data
-            obj.sigLoc = sigPath;
-            obj.refLoc = refPath;
-            obj.metaLoc = metaPath;
-
-            load(obj.sigLoc);
-            obj.sig = sig;
-            load(obj.refLoc);
-            obj.ref = ref;
-            load(obj.metaLoc,'delta_frep');
-            obj.dFrep = delta_frep;
-            load(obj.metaLoc,'f_rep');
-            obj.frep = f_rep;
             
-            % Analysis range of data, default is all the data
-            obj.anaRange = 1:length(obj.sig(1,:));
-            
-            % Number of data traces currently in the analysis object
-            obj.num = length(obj.sig(1,:));
+            if nargin == 3
+                % Signal, Reference, and MetaData paths and loading data
+                obj.sigLoc = sigPath;
+                obj.refLoc = refPath;
+                obj.metaLoc = metaPath;
 
-            % Create a time axis for reference in the data in us
-            obj.t = 1e6*(0:length(obj.sig(:,1))-1)./obj.daqFreq;
+                load(obj.sigLoc);
+                obj.sig = sig;
+                load(obj.refLoc);
+                obj.ref = ref;
+                load(obj.metaLoc,'delta_frep');
+                obj.dFrep = delta_frep;
+                load(obj.metaLoc,'comb1_frep');
+                obj.frep = comb1_frep;
+
+                % Analysis range of data, default is all the data
+                obj.anaRange = 1:length(obj.sig(1,:));
+
+                % Number of data traces currently in the analysis object
+                obj.num = length(obj.sig(1,:));
+
+                % Create a time axis for reference in the data in us
+                obj.t = 1e6*(0:length(obj.sig(:,1))-1)./obj.daqFreq;
+            end
 
         end
 
@@ -570,6 +573,58 @@ classdef postProcessingObject < handle
             obj.peakProm = peakProm;
         end
         
+        %% Custom saving and loading functions that work for handle objects
+        function s = saveobj(obj)
+            s.sigLoc = obj.sigLoc;
+            s.refLoc = obj.refLoc;
+            s.metaLoc = obj.metaLoc;
+            s.anaRange = obj.anaRange;
+            s.num = obj.num;
+            s.numSpec = obj.numSpec;
+            s.daqFreq = obj.daqFreq;
+            s.peakProm = obj.peakProm;
+            s.sig = obj.sig;
+            s.ref = obj.ref;
+            s.sigSpec = obj.sigSpec;
+            s.refSpec = obj.refSpec;
+            s.absorbance = obj.absorbance;
+            s.frep = obj.frep;
+            s.dFrep = obj.dFrep;
+            s.t = obj.t;
+            s.freq = obj.freq;
+            s.apoLen = obj.apoLen;
+            s.padNum = obj.padNum;
+        end
+    end
+    methods (Static)
+        function obj = loadobj(s)
+            if isstruct(s)
+                obj = postProcessingObject(); % Ensure an object is created
+
+                % Restore properties
+                obj.sigLoc = s.sigLoc;
+                obj.refLoc = s.refLoc;
+                obj.metaLoc = s.metaLoc;
+                obj.anaRange = s.anaRange;
+                obj.num = s.num;
+                obj.numSpec = s.numSpec;
+                obj.daqFreq = s.daqFreq;
+                obj.peakProm = s.peakProm;
+                obj.sig = s.sig;
+                obj.ref = s.ref;
+                obj.sigSpec = s.sigSpec;
+                obj.refSpec = s.refSpec;
+                obj.absorbance = s.absorbance;
+                obj.frep = s.frep;
+                obj.dFrep = s.dFrep;
+                obj.t = s.t;
+                obj.freq = s.freq;
+                obj.apoLen = s.apoLen;
+                obj.padNum = s.padNum;
+            else
+                obj = s; % If it's already an object, return as is
+            end
+        end
     end
 end
 
