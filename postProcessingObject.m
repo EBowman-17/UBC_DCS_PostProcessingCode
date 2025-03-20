@@ -53,7 +53,7 @@ classdef postProcessingObject < handle
         apoLen;
         
         % Zero padding, this adds the specified amount of zeros to the data
-        % in us
+        % in us to both sides of the interferogram.
         padNum;
         
         
@@ -234,10 +234,10 @@ classdef postProcessingObject < handle
             figure;
             index = 1; % Start with the first data set in the analysis range    
             % Micro second time scale
-            fMHz = obj.freq;
+            fTHz = obj.freq/1e12;
             
             % Update figure y data
-            plot(fMHz,obj.sigSpec(:,index));
+            plot(fTHz,obj.sigSpec(:,index));
             title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
             xlabel('Frequency (THz)');
             ylabel('Amplitude (A.U.)');
@@ -254,7 +254,7 @@ classdef postProcessingObject < handle
                         index = max(index - 1, 1);
                         clf;
                         % Update figure y data
-                        plot(fMHz,obj.sigSpec(:,index));
+                        plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
                         xlabel('Frequency (THz)');
                         ylabel('Amplitude (A.U.)');
@@ -262,7 +262,7 @@ classdef postProcessingObject < handle
                         index = min(index + 1, obj.numSpec);
                         clf;
                         % Update figure y data
-                        plot(fMHz,obj.sigSpec(:,index));
+                        plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
                         xlabel('Frequency (THz)');
                         ylabel('Amplitude (A.U.)');
@@ -279,12 +279,12 @@ classdef postProcessingObject < handle
             figure;
             index = 1; % Start with the first data set in the analysis range    
             % Micro second time scale
-            fMHz = obj.freq;
+            fTHz = obj.freq;
             
             % Update figure y data
-            plot(fMHz,obj.sigSpec(:,index));
+            plot(fTHz,obj.sigSpec(:,index));
             title(strcat('Frequency domain, current reference data (',string(obj.anaRange(index)),')'));
-            xlabel('Frequency (MHz)');
+            xlabel('Frequency (THz)');
             ylabel('Amplitude (A.U.)');
             
             plotting = true;
@@ -299,17 +299,17 @@ classdef postProcessingObject < handle
                         index = max(index - 1, 1);
                         clf;
                         % Update figure y data
-                        plot(fMHz,obj.sigSpec(:,index));
+                        plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current reference data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (MHz)');
+                        xlabel('Frequency (THz)');
                         ylabel('Amplitude (A.U.)');
                     elseif key == 29 % Right arrow
                         index = min(index + 1, obj.numSpec);
                         clf;
                         % Update figure y data
-                        plot(fMHz,obj.sigSpec(:,index));
+                        plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current reference data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (MHz)');
+                        xlabel('Frequency (THz)');
                         ylabel('Amplitude (A.U.)');
                     elseif key == 27 % Escape key to exit
                         close;
@@ -573,57 +573,30 @@ classdef postProcessingObject < handle
             obj.peakProm = peakProm;
         end
         
-        %% Custom saving and loading functions that work for handle objects
-        function s = saveobj(obj)
-            s.sigLoc = obj.sigLoc;
-            s.refLoc = obj.refLoc;
-            s.metaLoc = obj.metaLoc;
-            s.anaRange = obj.anaRange;
-            s.num = obj.num;
-            s.numSpec = obj.numSpec;
-            s.daqFreq = obj.daqFreq;
-            s.peakProm = obj.peakProm;
-            s.sig = obj.sig;
-            s.ref = obj.ref;
-            s.sigSpec = obj.sigSpec;
-            s.refSpec = obj.refSpec;
-            s.absorbance = obj.absorbance;
-            s.frep = obj.frep;
-            s.dFrep = obj.dFrep;
-            s.t = obj.t;
-            s.freq = obj.freq;
-            s.apoLen = obj.apoLen;
-            s.padNum = obj.padNum;
-        end
-    end
-    methods (Static)
-        function obj = loadobj(s)
-            if isstruct(s)
-                obj = postProcessingObject(); % Ensure an object is created
+        %% Custom saving, saving the whole object does not work, it's too much data
+        function saveData(obj,folderName)
+            
+            analysisRange = obj.anaRange;
 
-                % Restore properties
-                obj.sigLoc = s.sigLoc;
-                obj.refLoc = s.refLoc;
-                obj.metaLoc = s.metaLoc;
-                obj.anaRange = s.anaRange;
-                obj.num = s.num;
-                obj.numSpec = s.numSpec;
-                obj.daqFreq = s.daqFreq;
-                obj.peakProm = s.peakProm;
-                obj.sig = s.sig;
-                obj.ref = s.ref;
-                obj.sigSpec = s.sigSpec;
-                obj.refSpec = s.refSpec;
-                obj.absorbance = s.absorbance;
-                obj.frep = s.frep;
-                obj.dFrep = s.dFrep;
-                obj.t = s.t;
-                obj.freq = s.freq;
-                obj.apoLen = s.apoLen;
-                obj.padNum = s.padNum;
-            else
-                obj = s; % If it's already an object, return as is
-            end
+            daqFreq = obj.daqFreq;
+
+            sigSpectrum = obj.sigSpec;
+            refSpectrum = obj.refSpec;
+
+            absorbance = obj.absorbance;
+            frep = obj.frep;
+            dFrep = obj.dFrep;
+            freq = obj.freq;
+            apoLen = obj.apoLen;
+            zeroPadNum = obj.padNum;
+            
+            % Make directory for the analyzed data
+            mkdir(fileparts(obj.sigLoc)+"\"+folderName);
+            
+            saveLoc = fileparts(obj.sigLoc)+"\"+folderName+"\"+"analyzed_Data"; 
+            
+            save(saveLoc,"analysisRange","daqFreq","sigSpectrum","refSpectrum"...
+                ,"absorbance","frep","dFrep","freq","apoLen","zeroPadNum");
         end
     end
 end
