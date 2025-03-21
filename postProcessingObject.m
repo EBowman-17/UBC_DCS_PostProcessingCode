@@ -56,6 +56,8 @@ classdef postProcessingObject < handle
         % in us to both sides of the interferogram.
         padNum;
         
+        % Appodization window, this will be blackmanHarris nearly always
+        window;
         
     end
     
@@ -234,13 +236,13 @@ classdef postProcessingObject < handle
             figure;
             index = 1; % Start with the first data set in the analysis range    
             % Micro second time scale
-            fTHz = obj.freq/1e12;
+            fTHz = obj.freq*obj.dFrep/obj.frep/1e6;
             
             % Update figure y data
             plot(fTHz,obj.sigSpec(:,index));
             title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
-            xlabel('Frequency (THz)');
-            ylabel('Amplitude (A.U.)');
+            xlabel('Frequency (MHz)');
+            ylabel('Power Spectral Density (W/Hz)');
             
             plotting = true;
             while plotting
@@ -256,16 +258,16 @@ classdef postProcessingObject < handle
                         % Update figure y data
                         plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (THz)');
-                        ylabel('Amplitude (A.U.)');
+                        xlabel('Frequency (MHz)');
+                        ylabel('Power Spectral Density (W/Hz)');
                     elseif key == 29 % Right arrow
                         index = min(index + 1, obj.numSpec);
                         clf;
                         % Update figure y data
                         plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current signal data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (THz)');
-                        ylabel('Amplitude (A.U.)');
+                        xlabel('Frequency (MHz)');
+                        ylabel('Power Spectral Density (W/Hz)');
                     elseif key == 27 % Escape key to exit
                         close;
                         plotting = false;
@@ -279,13 +281,13 @@ classdef postProcessingObject < handle
             figure;
             index = 1; % Start with the first data set in the analysis range    
             % Micro second time scale
-            fTHz = obj.freq;
+            fTHz = obj.freq*obj.dFrep/obj.frep/1e6;
             
             % Update figure y data
             plot(fTHz,obj.sigSpec(:,index));
             title(strcat('Frequency domain, current reference data (',string(obj.anaRange(index)),')'));
-            xlabel('Frequency (THz)');
-            ylabel('Amplitude (A.U.)');
+            xlabel('Frequency (MHz)');
+            ylabel('Power Spectral Density (W/Hz)');
             
             plotting = true;
             while plotting
@@ -301,16 +303,16 @@ classdef postProcessingObject < handle
                         % Update figure y data
                         plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current reference data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (THz)');
-                        ylabel('Amplitude (A.U.)');
+                        xlabel('Frequency (MHz)');
+                        ylabel('Power Spectral Density (W/Hz)');
                     elseif key == 29 % Right arrow
                         index = min(index + 1, obj.numSpec);
                         clf;
                         % Update figure y data
                         plot(fTHz,obj.sigSpec(:,index));
                         title(strcat('Frequency domain, current reference data (',string(obj.anaRange(index)),')'));
-                        xlabel('Frequency (THz)');
-                        ylabel('Amplitude (A.U.)');
+                        xlabel('Frequency (MHz)');
+                        ylabel('Power Spectral Density (W/Hz)');
                     elseif key == 27 % Escape key to exit
                         close;
                         plotting = false;
@@ -322,7 +324,7 @@ classdef postProcessingObject < handle
         % Plot absorbance data
         function plotAbsorbance(obj)
             figure;
-            plot(obj.freq,obj.absorbance)
+            plot(obj.freq/1e12,obj.absorbance)
             title('Absorbance of averaged data')
             xlabel('Frequency (THz)')
             ylabel('Absorbance')
@@ -460,11 +462,11 @@ classdef postProcessingObject < handle
         % applyApoWindow needs to be called first
         function obj = blackmanHarris(obj)
             % Generate the window
-            window = blackmanharris(2*round(1e-6*obj.apoLen*obj.daqFreq)+1);
+            obj.window = blackmanharris(2*round(1e-6*obj.apoLen*obj.daqFreq)+1);
             
             % Apply the window
-            obj.sig = obj.sig.*window;
-            obj.ref = obj.ref.*window;
+            obj.sig = obj.sig.*obj.window;
+            obj.ref = obj.ref.*obj.window;
         end
         %% Remove cubic spline background from the data
         
@@ -506,8 +508,11 @@ classdef postProcessingObject < handle
         % de Haseth by default. If a second argument is passed, it should
         % be the Mertz phase window size in us.
         function obj = fftAndMertz(obj,mertzWind)
-            obj.sigSpec = fftshift(fft(obj.sig,[],1));
-            obj.refSpec = fftshift(fft(obj.ref,[],1));
+            sigLen = ceil(length(obj.sig(:,1))/4);
+            obj.sigSpec = fft(obj.sig,[],1);
+            obj.sigSpec = obj.sigSpec(1:sigLen,:);
+            obj.refSpec = fft(obj.ref,[],1);
+            obj.refSpec = obj.refSpec(1:sigLen,:);
             
             if nargin == 1
                 % Apply Mertz phase correction
@@ -515,25 +520,43 @@ classdef postProcessingObject < handle
                 obj.refSpec = real(obj.refSpec).^2./abs(obj.refSpec) + imag(obj.refSpec).^2./abs(obj.refSpec); 
             
             elseif nargin == 2
-                mertzSig = zeros(size(obj.sigSpec));
-                mertzRef = zeros(size(obj.sigSpec));
+                mertzSig = zeros(size(obj.sig));
+                mertzRef = zeros(size(obj.sig));
                 
                 HalfWindSize = round(0.5e-6*mertzWind*obj.daqFreq);
-                centInd = round(length(obj.sigSpec(:,1))/2);
+                centInd = round(length(obj.sig(:,1))/2);
                 mertzSig(centInd-HalfWindSize:centInd+HalfWindSize,:) = obj.sig(centInd-HalfWindSize:centInd+HalfWindSize,:);
                 mertzRef(centInd-HalfWindSize:centInd+HalfWindSize,:) = obj.ref(centInd-HalfWindSize:centInd+HalfWindSize,:);
                 
-                mertzSig = fftshift(fft(mertzSig,[],1));
-                mertzRef = fftshift(fft(mertzRef,[],1));
+                mertzSig = fft(mertzSig,[],1);
+                mertzSig = mertzSig(1:sigLen,:);
+                mertzRef = fft(mertzRef,[],1);
+                mertzRef = mertzRef(1:sigLen,:);
                 
                 obj.sigSpec = real(obj.sigSpec).*real(mertzSig)./abs(mertzSig) + imag(obj.sigSpec).*imag(mertzSig)./abs(mertzSig);
                 obj.refSpec = real(obj.refSpec).*real(mertzRef)./abs(mertzRef) + imag(obj.refSpec).*imag(mertzRef)./abs(mertzRef);
             end
             
-            len = length(obj.sigSpec(:,1));
+            % Scale appropriately to get Watts with a 50 Ohm load
+            % assumption. This will give power spectral density, which you 
+            % get by squaring the amplitude of the signal, then dividing by
+            % ENBW of the apodization window. 
+            
+            % *******************************************
+            % Need to convert GaGe Card
+            % amplitude to volts for this to make sense.
+            % *******************************************
+            
+%             scaleFact = sum(obj.window);
+%             ENBW = obj.daqFreq*sum(abs(obj.window.^2))./abs(sum(obj.window)).^2;
+%             
+%             obj.sigSpec = 25*(obj.sigSpec/scaleFact).^2./ENBW;
+%             obj.refSpec = 25*(obj.refSpec/scaleFact).^2./ENBW;
+            
+            len = length(obj.sig(:,1));
             freqBin = obj.daqFreq/len;
             % Create frequency axis in Hz
-            obj.freq = (-(len-1)/2:(len-1)/2)*freqBin*obj.frep/obj.dFrep;
+            obj.freq = (0:length(obj.sigSpec)-1)*freqBin*obj.frep/obj.dFrep;
             obj.numSpec = obj.num;
         end
         
@@ -589,6 +612,7 @@ classdef postProcessingObject < handle
             freq = obj.freq;
             apoLen = obj.apoLen;
             zeroPadNum = obj.padNum;
+            apoWindow = obj.window;
             
             % Make directory for the analyzed data
             mkdir(fileparts(obj.sigLoc)+"\"+folderName);
@@ -596,7 +620,7 @@ classdef postProcessingObject < handle
             saveLoc = fileparts(obj.sigLoc)+"\"+folderName+"\"+"analyzed_Data"; 
             
             save(saveLoc,"analysisRange","daqFreq","sigSpectrum","refSpectrum"...
-                ,"absorbance","frep","dFrep","freq","apoLen","zeroPadNum");
+                ,"absorbance","frep","dFrep","freq","apoLen","zeroPadNum","apoWindow");
         end
     end
 end
