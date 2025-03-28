@@ -27,7 +27,7 @@ classdef postProcessingObject < handle
         % For peak finding in the time domain, this is the minimum value
         % that constitutes a peak, default is 5000, can be set with the
         % mutator: setPeakProm
-        peakProm = 5000;
+        peakProm = 0.05;
         
         % The signal, reference data, and the frequency and time axis
         sig;
@@ -72,10 +72,11 @@ classdef postProcessingObject < handle
                 obj.refLoc = refPath;
                 obj.metaLoc = metaPath;
 
+                % Convert GaGe data to (Volts) by dividing
                 load(obj.sigLoc);
-                obj.sig = sig;
+                obj.sig = sig/65536;
                 load(obj.refLoc);
-                obj.ref = ref;
+                obj.ref = ref/65536;
                 load(obj.metaLoc,'delta_frep');
                 obj.dFrep = delta_frep;
                 load(obj.metaLoc,'comb1_frep');
@@ -116,7 +117,7 @@ classdef postProcessingObject < handle
             end
             title(strcat('Time Domain, current signal data (',string(obj.anaRange(index)),')'));
             xlabel('Time (us)');
-            ylabel('Amplitude (A.U.)');
+            ylabel('Amplitude (V)');
 
             plotting = true;
             while plotting
@@ -132,7 +133,7 @@ classdef postProcessingObject < handle
                         plot(tus,obj.sig(:,index));
                         title(strcat('Time Domain, current signal data (',string(obj.anaRange(index)),')'));
                         xlabel('Time (us)');
-                        ylabel('Amplitude (A.U.)');
+                        ylabel('Amplitude (V)');
                         % Find peaks and label them
                         [pks,locs] = findpeaks(obj.sig(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
                         text(locs+1,pks,string(locs))
@@ -146,7 +147,7 @@ classdef postProcessingObject < handle
                         plot(tus,obj.sig(:,index));
                         title(strcat('Time Domain, current signal data (',string(obj.anaRange(index)),')'));
                         xlabel('Time (us)');
-                        ylabel('Amplitude (A.U.)');
+                        ylabel('Amplitude (V)');
                         % Find peaks and label them
                         [pks,locs] = findpeaks(obj.sig(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
                         text(locs+1,pks,string(locs))
@@ -184,7 +185,7 @@ classdef postProcessingObject < handle
             end
             title(strcat('Time Domain, current reference data (',string(obj.anaRange(index)),')'));
             xlabel('Time (us)');
-            ylabel('Amplitude (A.U.)');
+            ylabel('Amplitude (V)');
 
             plotting = true;
             while plotting
@@ -200,7 +201,7 @@ classdef postProcessingObject < handle
                         plot(tus,obj.ref(:,index));
                         title(strcat('Time Domain, current reference data (',string(obj.anaRange(index)),')'));
                         xlabel('Time (us)');
-                        ylabel('Amplitude (A.U.)');
+                        ylabel('Amplitude (V)');
                         % Find peaks and label them
                         [pks,locs] = findpeaks(obj.ref(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
                         text(locs+1,pks,string(locs))
@@ -214,7 +215,7 @@ classdef postProcessingObject < handle
                         plot(tus,obj.ref(:,index));
                         title(strcat('Time Domain, current reference data (',string(obj.anaRange(index)),')'));
                         xlabel('Time (us)');
-                        ylabel('Amplitude (A.U.)');
+                        ylabel('Amplitude (V)');
                         % Find peaks and label them
                         [pks,locs] = findpeaks(obj.ref(:,index),tus,'MinPeakProminence',obj.peakProm,'MinPeakDistance',1);
                         text(locs+1,pks,string(locs))
@@ -358,7 +359,7 @@ classdef postProcessingObject < handle
             plot(tus,obj.sig(:,index));
             title(strcat('Time domain, current signal data (',string(obj.anaRange(index)),')'));
             xlabel('Time (us)');
-            ylabel('Amplitude (A.U.)');
+            ylabel('Amplitude (V)');
             hold on
             % Find peaks and label them
             [pks,locs] = findpeaks(obj.sig(centInd-numInd:centInd+numInd,index),'MinPeakProminence',obj.peakProm,'MinPeakDistance',200);
@@ -397,7 +398,7 @@ classdef postProcessingObject < handle
                         plot(tus,obj.sig(:,index));
                         title(strcat('Time domain, current signal data (',string(obj.anaRange(index)),')'));
                         xlabel('Time (us)');
-                        ylabel('Amplitude (A.U.)');
+                        ylabel('Amplitude (V)');
                         hold on
                         % Show the apodization window
                         plot(xPos1,yPos1,'color','r')
@@ -410,7 +411,7 @@ classdef postProcessingObject < handle
                         plot(tus,obj.sig(:,index));
                         title(strcat('Time domain, current signal data (',string(obj.anaRange(index)),')'));
                         xlabel('Time (us)');
-                        ylabel('Amplitude (A.U.)');
+                        ylabel('Amplitude (V)');
                         hold on
                         % Show the apodization window
                         plot(xPos1,yPos1,'color','r')
@@ -442,11 +443,12 @@ classdef postProcessingObject < handle
             centInd = round(length(obj.sig(:,1))/2);
             
             for i=1:obj.num
-                [~,locs] = findpeaks(obj.sig(centInd-numInd:centInd+numInd,i),'MinPeakProminence',obj.peakProm,'MinPeakDistance',200);
+                [~,locs] = max(obj.sig(centInd-numInd:centInd+numInd,i));
                 locs = locs+centInd-numInd-1;
                 tempSig(:,i) = obj.sig(locs(1)-index:locs(1)+index,i);
 
-                [~,locs] = findpeaks(obj.ref(centInd-numInd:centInd+numInd,i),'MinPeakProminence',obj.peakProm,'MinPeakDistance',200);
+                %[~,locs] = max(obj.ref(centInd-numInd:centInd+numInd,i),'MinPeakProminence',obj.peakProm,'MinPeakDistance',200);
+                [~,locs] = max(obj.ref(centInd-numInd:centInd+numInd,i));
                 locs = locs+centInd-numInd-1;
                 tempRef(:,i) = obj.ref(locs(1)-index:locs(1)+index,i);
             end
@@ -493,6 +495,11 @@ classdef postProcessingObject < handle
             nZ = round((2^p-n)/2);
             obj.sig = padarray(obj.sig,[nZ 0]);
             obj.ref = padarray(obj.ref,[nZ 0]);
+            
+            %%%
+            obj.window = padarray(obj.window,nZ);
+            %%%
+            
             % Make a new time array for plotting reasons
             obj.t = 1e6*(0:length(obj.sig(:,1))-1)./obj.daqFreq;
             % Save the amount of zeros added per side in us of data
@@ -539,19 +546,15 @@ classdef postProcessingObject < handle
             
             % Scale appropriately to get Watts with a 50 Ohm load
             % assumption. This will give power spectral density, which you 
-            % get by squaring the amplitude of the signal, then dividing by
-            % ENBW of the apodization window. 
+            % get squaring the amplitude of the signal then dividing by 2,
+            % then divide by the equivalent energy bandwidth of the
+            % appodization window and divide by 50 Ohms.
             
-            % *******************************************
-            % Need to convert GaGe Card
-            % amplitude to volts for this to make sense.
-            % *******************************************
+            scaleFact = sum(obj.window);
+            ENBW = obj.daqFreq*sum(abs(obj.window.^2))./abs(sum(obj.window)).^2;
             
-%             scaleFact = sum(obj.window);
-%             ENBW = obj.daqFreq*sum(abs(obj.window.^2))./abs(sum(obj.window)).^2;
-%             
-%             obj.sigSpec = 25*(obj.sigSpec/scaleFact).^2./ENBW;
-%             obj.refSpec = 25*(obj.refSpec/scaleFact).^2./ENBW;
+            obj.sigSpec = (obj.sigSpec/scaleFact).^2./ENBW/25;
+            obj.refSpec = (obj.refSpec/scaleFact).^2./ENBW/25;
             
             len = length(obj.sig(:,1));
             freqBin = obj.daqFreq/len;
@@ -612,7 +615,6 @@ classdef postProcessingObject < handle
             freq = obj.freq;
             apoLen = obj.apoLen;
             zeroPadNum = obj.padNum;
-            apoWindow = obj.window;
             
             % Make directory for the analyzed data
             mkdir(fileparts(obj.sigLoc)+"\"+folderName);
@@ -620,7 +622,7 @@ classdef postProcessingObject < handle
             saveLoc = fileparts(obj.sigLoc)+"\"+folderName+"\"+"analyzed_Data"; 
             
             save(saveLoc,"analysisRange","daqFreq","sigSpectrum","refSpectrum"...
-                ,"absorbance","frep","dFrep","freq","apoLen","zeroPadNum","apoWindow");
+                ,"absorbance","frep","dFrep","freq","apoLen","zeroPadNum");
         end
     end
 end
